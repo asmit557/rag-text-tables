@@ -8,7 +8,7 @@ A production-grade Retrieval-Augmented Generation chatbot for querying PDF docum
 ## Problem Statement
 
 Build a RAG chatbot that:
-- Handles PDFs with mixed content (text, tables, images)
+- Handles PDFs with mixed content (text, tables)
 - Supports multi-turn, context-aware Q&A
 - Returns answers grounded in retrieved chunks with citations
 - Prevents duplicate/fragmented data extraction
@@ -57,23 +57,23 @@ PageContent(
 )
 ```
 
-**Why Coordinate-Based Tables?**
+**Why Separate Table Extraction?**
 
-Generic pdfplumber causes duplication:
-- Text extraction grabs table cells (wrapped, out of order)
-- Table extraction detects grid structure
-- Result: Same data appears twice
+Generic extraction causes duplication:
+- Text extraction captures table content (fragmented, out of order)
+- Table detection finds structured grid
+- Result: Data appears in two forms, conflicting contexts
 
-Custom coordinate approach:
-- Define column x-ranges and row y-ranges
-- Bucket words by spatial position
-- Extract ONCE correctly
-- Mask those regions from text extraction
+Pdfplumber approach:
+- Detects table regions via visual analysis (lines, spacing, grid patterns)
+- Extracts tables with proper structure and alignment
+- Masks those regions from body text extraction
+- No duplication, clean separation of content types
 
 **Handles Complex Layouts:**
-- ✅ Merged cells (adjust y-band ranges)
-- ✅ Bulleted items (cluster words by y-coordinate)
-- ✅ Section headers (skip non-data y-ranges)
+- ✅ Multi-row headers and merged cells
+- ✅ Bulleted/formatted cell content
+- ✅ Section bands and table groupings
 
 ---
 
@@ -131,7 +131,7 @@ BUT (page_content remains):
 ```
 
 ---
-
+```
 ┌────────────────────────────────────┐
 │ INPUT: Enriched Chunks             │
 └──────────────┬─────────────────────┘
@@ -162,8 +162,8 @@ BUT (page_content remains):
                    2. Fetch metadata from dict
                    3. Fetch full content from SQLite
                    4. Combine for reranking
-
-  ---
+```
+---
 
 ### **4. Ingestion** (`ingest.py`)
 
@@ -541,5 +541,23 @@ User: "What is annual leave for full-time employees?"
       Answer: "21 days for full-time employees..."
       Sources: [HR Policies 2024, p.42, section: Leave Entitlements]
 ```
+## References & Technologies
+
+### Core Technologies
+
+- **[LangChain RecursiveCharacterTextSplitter](https://python.langchain.com/docs/modules/data_connection/document_transformers/recursive_text_splitter)** — Semantic-aware text chunking with hierarchical splitting
+- **[all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)** — 384-dimensional dense embeddings optimized for semantic search
+- **[Chroma](https://docs.trychroma.com/)** — Open-source vector database for efficient similarity search
+- **[Okapi BM25](https://en.wikipedia.org/wiki/Okapi_BM25)** — Statistical ranking function for keyword-based retrieval
+- **[Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/RRF.pdf)** — Combines multiple ranking signals for robust retrieval
+- **[Sentence-Transformers Cross-Encoder](https://www.sbert.net/examples/applications/cross-encoders/README.html)** — Pair-wise relevance scoring for accurate reranking
+- **[RAG Best Practices](https://www.anthropic.com/)** — Anthropic's research on improving RAG systems with contextual prefixing
+
+### Supporting Libraries
+
+- **PyMuPDF (`fitz`)**: PDF text extraction with bounding boxes
+- **pdfplumber**: Visual table detection and extraction
+- **google-generativeai**: Gemini API integration
+- **Streamlit**: Interactive web UI framework
 
 ---
